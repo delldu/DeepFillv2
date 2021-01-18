@@ -10,7 +10,6 @@ if __name__ == "__main__":
     # General parameters
     parser.add_argument('--save_path', type = str, default = './models', help = 'saving path that is a folder')
     parser.add_argument('--sample_path', type = str, default = './samples', help = 'training samples path that is a folder')
-    parser.add_argument('--gan_type', type = str, default = 'WGAN', help = 'the type of GAN for training')
     parser.add_argument('--multi_gpu', type = bool, default = False, help = 'nn.Parallel needs or not')
     parser.add_argument('--gpu_ids', type = str, default = "0,1", help = 'gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
     parser.add_argument('--cudnn_benchmark', type = bool, default = True, help = 'True for unchanged input data type')
@@ -66,6 +65,5 @@ if __name__ == "__main__":
     
     # Enter main function
     import trainer
-    if opt.gan_type == 'WGAN':
-        trainer.WGAN_trainer(opt)
+    trainer.WGAN_trainer(opt)
     

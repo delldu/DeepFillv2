@@ -3,7 +3,6 @@ python3 train.py \
 --save_path './models' \
 --sample_path './samples' \
 --gpu_ids '0,1' \
---gan_type 'WGAN' \
 --cudnn_benchmark True \
 --checkpoint_interval 1 \
 --multi_gpu True \

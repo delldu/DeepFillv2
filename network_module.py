@@ -4,6 +4,8 @@ from torch.nn import functional as F
 from torch.nn import Parameter
 from utils import *
 
+import pdb
+
 #-----------------------------------------------
 #                Normal ConvBlock
 #-----------------------------------------------
@@ -11,6 +13,9 @@ class Conv2dLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, pad_type = 'zero', activation = 'elu', norm = 'none', sn = False):
         super(Conv2dLayer, self).__init__()
         # Initialize the padding scheme
+
+        # pad_type = opt.pad_type, activation = opt.activation, norm = opt.norm
+
         if pad_type == 'reflect':
             self.pad = nn.ReflectionPad2d(padding)
         elif pad_type == 'replicate':
@@ -56,6 +61,8 @@ class Conv2dLayer(nn.Module):
         else:
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding = 0, dilation = dilation)
     
+        pdb.set_trace()
+
     def forward(self, x):
         x = self.pad(x)
         x = self.conv2d(x)
@@ -72,6 +79,8 @@ class TransposeConv2dLayer(nn.Module):
         self.scale_factor = scale_factor
         self.conv2d = Conv2dLayer(in_channels, out_channels, kernel_size, stride, padding, dilation, pad_type, activation, norm, sn)
     
+        pdb.set_trace()
+
     def forward(self, x):
         x = F.interpolate(x, scale_factor = self.scale_factor, mode = 'nearest')
         x = self.conv2d(x)
@@ -131,6 +140,19 @@ class GatedConv2d(nn.Module):
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding = 0, dilation = dilation)
             self.mask_conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding = 0, dilation = dilation)
         self.sigmoid = torch.nn.Sigmoid()
+
+        # pdb.set_trace()
+        # in_channels = 4
+        # out_channels = 48
+        # kernel_size = 5
+        # stride = 1
+        # padding = 2
+        # dilation = 1
+        # pad_type = 'zero'
+        # activation = 'elu'
+        # norm = 'none'
+        # sn = False
+
     
     def forward(self, x):
         x = self.pad(x)
@@ -148,6 +170,34 @@ class TransposeGatedConv2d(nn.Module):
         # Initialize the conv scheme
         self.scale_factor = scale_factor
         self.gated_conv2d = GatedConv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, pad_type, activation, norm, sn)
+
+        # pdb.set_trace()
+        # (Pdb) a
+        # self = TransposeGatedConv2d(
+        #   (gated_conv2d): GatedConv2d(
+        #     (pad): ZeroPad2d(padding=(1, 1, 1, 1), value=0.0)
+        #     (activation): ELU(alpha=1.0)
+        #     (conv2d): SpectralNorm(
+        #       (module): Conv2d(192, 96, kernel_size=(3, 3), stride=(1, 1))
+        #     )
+        #     (mask_conv2d): SpectralNorm(
+        #       (module): Conv2d(192, 96, kernel_size=(3, 3), stride=(1, 1))
+        #     )
+        #     (sigmoid): Sigmoid()
+        #   )
+        # )
+        # in_channels = 192
+        # out_channels = 96
+        # kernel_size = 3
+        # stride = 1
+        # padding = 1
+        # dilation = 1
+        # pad_type = 'zero'
+        # activation = 'elu'
+        # norm = 'none'
+        # sn = True
+        # scale_factor = 2
+
     
     def forward(self, x):
         x = F.interpolate(x, scale_factor = self.scale_factor, mode = 'nearest')
@@ -167,6 +217,9 @@ class LayerNorm(nn.Module):
         if self.affine:
             self.gamma = Parameter(torch.Tensor(num_features).uniform_())
             self.beta = Parameter(torch.zeros(num_features))
+
+        pdb.set_trace()
+
 
     def forward(self, x):
         # layer norm
@@ -199,6 +252,15 @@ class SpectralNorm(nn.Module):
         self.power_iterations = power_iterations
         if not self._made_params():
             self._make_params()
+        # !!!!!!!!!!!!!!!!!!
+        # name === 'weight'
+        # power_iterations === 1
+        # !!!!!!!!!!!!!!!!!!
+
+        # self = SpectralNorm(
+        #   (module): Conv2d(192, 96, kernel_size=(3, 3), stride=(1, 1))
+        # )
+        # module = Conv2d(192, 96, kernel_size=(3, 3), stride=(1, 1))
 
     def _update_u_v(self):
         u = getattr(self.module, self.name + "_u")
@@ -206,6 +268,10 @@ class SpectralNorm(nn.Module):
         w = getattr(self.module, self.name + "_bar")
 
         height = w.data.shape[0]
+        # Performs a matrix-vector product of the matrix input and the vector vec.
+        # (Pdb) pp u.data.size(), v.data.size(), w.data.size()
+        # (torch.Size([96]), torch.Size([1728]), torch.Size([96, 192, 3, 3]))
+
         for _ in range(self.power_iterations):
             v.data = l2normalize(torch.mv(torch.t(w.view(height,-1).data), u.data))
             u.data = l2normalize(torch.mv(w.view(height,-1).data, v.data))
@@ -225,15 +291,23 @@ class SpectralNorm(nn.Module):
 
     def _make_params(self):
         w = getattr(self.module, self.name)
+        # (Pdb) pp type(w)
+        # <class 'torch.nn.parameter.Parameter'>
+        # (Pdb) pp w.size()
+        # torch.Size([96, 192, 3, 3])
 
         height = w.data.shape[0]
         width = w.view(height, -1).data.shape[1]
+        # (Pdb) pp height, width
+        # (96, 1728 = 192x3x3)
 
         u = Parameter(w.data.new(height).normal_(0, 1), requires_grad=False)
         v = Parameter(w.data.new(width).normal_(0, 1), requires_grad=False)
         u.data = l2normalize(u.data)
         v.data = l2normalize(v.data)
         w_bar = Parameter(w.data)
+        # (Pdb) pp u.data.size(), v.data.size(), w.data.size()
+        # (torch.Size([96]), torch.Size([1728]), torch.Size([96, 192, 3, 3]))
 
         del self.module._parameters[self.name]
 
@@ -248,7 +322,8 @@ class SpectralNorm(nn.Module):
 
 class ContextualAttention(nn.Module):
     def __init__(self, ksize=3, stride=1, rate=1, fuse_k=3, softmax_scale=10,
-                 fuse=True, use_cuda=True, device_ids=None):
+                 fuse=True, use_cuda=True):
+        # ksize=3, stride=1, rate=2, fuse_k=3, softmax_scale=10, fuse=True
         super(ContextualAttention, self).__init__()
         self.ksize = ksize
         self.stride = stride
@@ -257,7 +332,15 @@ class ContextualAttention(nn.Module):
         self.softmax_scale = softmax_scale
         self.fuse = fuse
         self.use_cuda = use_cuda
-        self.device_ids = device_ids
+        # pdb.set_trace()
+        # self = ContextualAttention()
+        # ksize = 3
+        # stride = 1
+        # rate = 2
+        # fuse_k = 3
+        # softmax_scale = 10
+        # fuse = True
+        # use_cuda = True
 
     def forward(self, f, b, mask=None):
         """ Contextual attention layer implementation.
@@ -280,24 +363,44 @@ class ContextualAttention(nn.Module):
 
         # extract patches from background with stride and rate
         kernel = 2 * self.rate
-        # raw_w is extracted for reconstruction
-        raw_w = extract_image_patches(b, ksizes=[kernel, kernel],
+        # raw_w is extracted for reconstruction, b -- backgroud
+
+        # ksize=3, stride=1, rate=2, fuse_k=3, softmax_scale=10, fuse=True
+        raw_w = extract_image_patches(b, ksizes=[2 * self.rate, 2 * self.rate],
                                       strides=[self.rate*self.stride,
                                                self.rate*self.stride],
                                       rates=[1, 1],
                                       padding='same') # [N, C*k*k, L]
-        # raw_shape: [N, C, k, k, L] [4, 192, 4, 4, 1024]
+        # raw_shape: [N, C, k, k, L]
+        # (Pdb) p b.size()
+        # torch.Size([1, 192, 128, 170])
+        # kernel == 4, self.rate*self.stride == 2
+        # ==> 192 X 4 X 4 ==> (192*4*4)
+        # ==> raw_w.size(): torch.Size([1, 3072, 5440])
+
         raw_w = raw_w.view(raw_int_bs[0], raw_int_bs[1], kernel, kernel, -1)
-        raw_w = raw_w.permute(0, 4, 1, 2, 3)    # raw_shape: [N, L, C, k, k]
+        raw_w = raw_w.permute(0, 4, 1, 2, 3)    # raw_shape: [B, L, C, k, k]
         raw_w_groups = torch.split(raw_w, 1, dim=0)
+
+        # (Pdb) raw_w.size() ==> torch.Size([1, 5440, 192, 4, 4])
+        # (Pdb) len(raw_w_groups) -- 1
+        # (Pdb) raw_w_groups[0].size()
+        # torch.Size([1, 5440, 192, 4, 4])
+
 
         # downscaling foreground option: downscaling both foreground and
         # background for matching and use original background for reconstruction.
+        # f -- foreground
+        # self.rate == 2
         f = F.interpolate(f, scale_factor=1./self.rate, mode='nearest')
         b = F.interpolate(b, scale_factor=1./self.rate, mode='nearest')
         int_fs = list(f.size())     # b*c*h*w
         int_bs = list(b.size())
         f_groups = torch.split(f, 1, dim=0)  # split tensors along the batch dimension
+        # pdb.set_trace()
+        # (Pdb) len(f_groups), f_groups[0].size()
+        # (1, torch.Size([1, 192, 64, 85]))
+
         # w shape: [N, C*k*k, L]
         w = extract_image_patches(b, ksizes=[self.ksize, self.ksize],
                                   strides=[self.stride, self.stride],
@@ -305,22 +408,24 @@ class ContextualAttention(nn.Module):
                                   padding='same')
         # w shape: [N, C, k, k, L]
         w = w.view(int_bs[0], int_bs[1], self.ksize, self.ksize, -1)
-        w = w.permute(0, 4, 1, 2, 3)    # w shape: [N, L, C, k, k]
+        w = w.permute(0, 4, 1, 2, 3)    # w shape: [B, L, C, k, k]
         w_groups = torch.split(w, 1, dim=0)
+
 
         # process mask
         mask = F.interpolate(mask, scale_factor=1./self.rate, mode='nearest')
         int_ms = list(mask.size())
+
         # m shape: [N, C*k*k, L]
         m = extract_image_patches(mask, ksizes=[self.ksize, self.ksize],
                                   strides=[self.stride, self.stride],
                                   rates=[1, 1],
                                   padding='same')
-
-        # m shape: [N, C, k, k, L]
+        # m shape: [B, C, k, k, L]
         m = m.view(int_ms[0], int_ms[1], self.ksize, self.ksize, -1)
-        m = m.permute(0, 4, 1, 2, 3)    # m shape: [N, L, C, k, k]
-        m = m[0]    # m shape: [L, C, k, k]
+        m = m.permute(0, 4, 1, 2, 3)    # m shape: [B, L, C, k, k]
+        m = m[0]    # m shape: [B, C, k, k]
+
         # mm shape: [L, 1, 1, 1]
         mm = (reduce_mean(m, axis=[1, 2, 3], keepdim=True)==0.).to(torch.float32)
         mm = mm.permute(1, 0, 2, 3) # mm shape: [1, L, 1, 1]

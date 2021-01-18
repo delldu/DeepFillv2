@@ -6,6 +6,7 @@ import torch.nn as nn
 import torchvision as tv
 
 import network
+import pdb
 
 # ----------------------------------------
 #                 Network
@@ -35,23 +36,25 @@ def create_perceptualnet():
 # ----------------------------------------
 #             PATH processing
 # ----------------------------------------
-def text_readlines(filename):
-    # Try to read a txt file and return a list.Return [] if there was a mistake.
-    try:
-        file = open(filename, 'r')
-    except IOError:
-        error = []
-        return error
-    content = file.readlines()
-    # This for loop deletes the EOF (like \n)
-    for i in range(len(content)):
-        content[i] = content[i][:len(content[i])-1]
-    file.close()
-    return content
+# xxxx3333
+# def text_readlines(filename):
+#     # Try to read a txt file and return a list.Return [] if there was a mistake.
+#     try:
+#         file = open(filename, 'r')
+#     except IOError:
+#         error = []
+#         return error
+#     content = file.readlines()
+#     # This for loop deletes the EOF (like \n)
+#     for i in range(len(content)):
+#         content[i] = content[i][:len(content[i])-1]
+#     file.close()
+#     return content
 
-def savetxt(name, loss_log):
-    np_loss_log = np.array(loss_log)
-    np.savetxt(name, np_loss_log)
+# xxxx3333
+# def savetxt(name, loss_log):
+#     np_loss_log = np.array(loss_log)
+#     np.savetxt(name, np_loss_log)
 
 def get_files(path):
     # read a folder, return the complete path
@@ -69,13 +72,14 @@ def get_names(path):
             ret.append(filespath)
     return ret
 
-def text_save(content, filename, mode = 'a'):
-    # save a list to a txt
-    # Try to save a list variable in txt file.
-    file = open(filename, mode)
-    for i in range(len(content)):
-        file.write(str(content[i]) + '\n')
-    file.close()
+# xxxx3333
+# def text_save(content, filename, mode = 'a'):
+#     # save a list to a txt
+#     # Try to save a list variable in txt file.
+#     file = open(filename, mode)
+#     for i in range(len(content)):
+#         file.write(str(content[i]) + '\n')
+#     file.close()
 
 def check_path(path):
     if not os.path.exists(path):
@@ -106,13 +110,14 @@ def psnr(pred, target, pixel_max_cnt = 255):
     p = 20 * np.log10(pixel_max_cnt / rmse_avg)
     return p
 
-def grey_psnr(pred, target, pixel_max_cnt = 255):
-    pred = torch.sum(pred, dim = 0)
-    target = torch.sum(target, dim = 0)
-    mse = torch.mul(target - pred, target - pred)
-    rmse_avg = (torch.mean(mse).item()) ** 0.5
-    p = 20 * np.log10(pixel_max_cnt * 3 / rmse_avg)
-    return p
+# xxxx3333
+# def grey_psnr(pred, target, pixel_max_cnt = 255):
+#     pred = torch.sum(pred, dim = 0)
+#     target = torch.sum(target, dim = 0)
+#     mse = torch.mul(target - pred, target - pred)
+#     rmse_avg = (torch.mean(mse).item()) ** 0.5
+#     p = 20 * np.log10(pixel_max_cnt * 3 / rmse_avg)
+#     return p
 
 def ssim(pred, target):
     pred = pred.clone().data.permute(0, 2, 3, 1).cpu().numpy()
@@ -123,6 +128,13 @@ def ssim(pred, target):
     return ssim
 
 ## for contextual attention
+
+# def extract_image_patches(img, patch_num):
+#     b, c, h, w = img.shape
+#     img = torch.reshape(img, [b, c, patch_num, h//patch_num, patch_num, w//patch_num])
+#     img = img.permute([0, 2, 4, 3, 5, 1])
+#     # [b, patch_num, patch_num, h//patch_num, w//patch_num, c]
+#     return img
 
 def extract_image_patches(images, ksizes, strides, rates, padding='same'):
     """
@@ -139,6 +151,8 @@ def extract_image_patches(images, ksizes, strides, rates, padding='same'):
     assert padding in ['same', 'valid']
     batch_size, channel, height, width = images.size()
 
+    # pdb.set_trace()
+    # padding === 'same'
     if padding == 'same':
         images = same_padding(images, ksizes, strides, rates)
     elif padding == 'valid':
@@ -152,10 +166,23 @@ def extract_image_patches(images, ksizes, strides, rates, padding='same'):
                              padding=0,
                              stride=strides)
     patches = unfold(images)
+
+    # pdb.set_trace()
+    # (Pdb) images.size()
+    # torch.Size([1, 192, 128, 170])
+    
+    # (Pdb) patches.size()
+    # torch.Size([1, 3072, 5440])
+
     return patches  # [N, C*k*k, L], L is the total number of such blocks
 
 def same_padding(images, ksizes, strides, rates):
     assert len(images.size()) == 4
+
+    # pdb.set_trace()
+    # ksizes = [4, 4]
+    # strides = [2, 2]
+    # rates = [1, 1]
     batch_size, channel, rows, cols = images.size()
     out_rows = (rows + strides[0] - 1) // strides[0]
     out_cols = (cols + strides[1] - 1) // strides[1]
@@ -179,13 +206,13 @@ def reduce_mean(x, axis=None, keepdim=False):
         x = torch.mean(x, dim=i, keepdim=keepdim)
     return x
 
-
-def reduce_std(x, axis=None, keepdim=False):
-    if not axis:
-        axis = range(len(x.shape))
-    for i in sorted(axis, reverse=True):
-        x = torch.std(x, dim=i, keepdim=keepdim)
-    return x
+# xxxx3333
+# def reduce_std(x, axis=None, keepdim=False):
+#     if not axis:
+#         axis = range(len(x.shape))
+#     for i in sorted(axis, reverse=True):
+#         x = torch.std(x, dim=i, keepdim=keepdim)
+#     return x
 
 
 def reduce_sum(x, axis=None, keepdim=False):

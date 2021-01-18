@@ -9,7 +9,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # General parameters
     parser.add_argument('--results_path', type = str, default = './results', help = 'testing samples path that is a folder')
-    parser.add_argument('--gan_type', type = str, default = 'WGAN', help = 'the type of GAN for training')
     parser.add_argument('--gpu_ids', type = str, default = "0", help = 'gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
     parser.add_argument('--cudnn_benchmark', type = bool, default = True, help = 'True for unchanged input data type')
     # Training parameters
@@ -37,6 +36,5 @@ if __name__ == "__main__":
     
     # Enter main function
     import tester
-    if opt.gan_type == 'WGAN':
-        tester.WGAN_tester(opt)
+    tester.WGAN_tester(opt)
     

@@ -12,6 +12,51 @@ import network
 import test_dataset
 import utils
 
+import pdb
+
+def export_onnx_model(model):
+    """Export onnx model."""
+
+    import onnx
+    from onnx import optimizer
+
+    onnx_file = "results/model.onnx"
+
+    # 2. Model export
+    print("Export model ...")
+    image_input = torch.randn(1, 3, 512, 512).cuda()
+    mask_input = torch.randn(1, 1, 512, 512).cuda()
+
+    input_names = ["input", "mask"]
+    output_names = ["output"]
+    # variable lenght axes
+    dynamic_axes = {'input': {0: 'batch_size', 1: 'channel', 2: "height", 3: 'width'},
+                    'mask': {0: 'batch_size', 1: 'channel', 2: "height", 3: 'width'},
+                    'output': {0: 'batch_size', 1: 'channel', 2: "height", 3: 'width'}}
+
+    torch.onnx.export(model, (image_input, mask_input), onnx_file,
+                      input_names=input_names,
+                      output_names=output_names,
+                      verbose=True,
+                      opset_version=11,
+                      keep_initializers_as_inputs=True,
+                      export_params=True,
+                      dynamic_axes=dynamic_axes)
+
+    # 3. Optimize model
+    print('Checking model ...')
+    model = onnx.load(onnx_file)
+    onnx.checker.check_model(model)
+
+    print("Optimizing model ...")
+    passes = ["extract_constant_to_initializer",
+              "eliminate_unused_initializer"]
+    optimized_model = optimizer.optimize(model, passes)
+    onnx.save(optimized_model, onnx_file)
+
+    # 4. Visual model
+    # python -c "import netron; netron.start('models/image_color.onnx')"
+
 
 def WGAN_tester(opt):
     
@@ -27,8 +72,8 @@ def WGAN_tester(opt):
     # ----------------------------------------
 
     # configurations
-    if not os.path.exists(results_path):
-        os.makedirs(results_path)
+    if not os.path.exists(opt.results_path):
+        os.makedirs(opt.results_path)
 
     # Build networks
     generator = utils.create_generator(opt).eval()
@@ -46,6 +91,8 @@ def WGAN_tester(opt):
     # Define the dataset
     trainset = test_dataset.InpaintDataset(opt)
     print('The overall number of images equals to %d' % len(trainset))
+
+    # export_onnx_model(generator)
 
     # Define the dataloader
     dataloader = DataLoader(trainset, batch_size = opt.batch_size, shuffle = False, num_workers = opt.num_workers, pin_memory = True)
@@ -66,9 +113,10 @@ def WGAN_tester(opt):
         first_out_wholeimg = img * (1 - mask) + first_out * mask        # in range [0, 1]
         second_out_wholeimg = img * (1 - mask) + second_out * mask      # in range [0, 1]
 
-        masked_img = img * (1 - mask) + mask
-        mask = torch.cat((mask, mask, mask), 1)
-        img_list = [second_out_wholeimg]
-        name_list = ['second_out']
-        utils.save_sample_png(sample_folder = results_path, sample_name = '%d' % (batch_idx + 1), img_list = img_list, name_list = name_list, pixel_max_cnt = 255)
+        # masked_img = img * (1 - mask) + mask
+        # mask = torch.cat((mask, mask, mask), 1)
+
+        img_list = [first_out_wholeimg, second_out_wholeimg]
+        name_list = ['first_out', 'second_out']
+        utils.save_sample_png(sample_folder = opt.results_path, sample_name = '%d' % (batch_idx + 1), img_list = img_list, name_list = name_list, pixel_max_cnt = 255)
         print('----------------------batch_idx%d' % (batch_idx + 1) + ' has been finished----------------------')
