@@ -32,12 +32,9 @@ if __name__ == "__main__":
     parser.add_argument('--lambda_gan', type = float, default = 1, help = 'the parameter of valid loss of AdaReconL1Loss; 0 is recommended')
     parser.add_argument('--num_workers', type = int, default = 8, help = 'number of cpu threads to use during batch generation')
     # Network parameters
-    parser.add_argument('--in_channels', type = int, default = 4, help = 'input RGB image + 1 channel mask')
     parser.add_argument('--out_channels', type = int, default = 3, help = 'output RGB image')
     parser.add_argument('--latent_channels', type = int, default = 48, help = 'latent channels')
-    parser.add_argument('--pad_type', type = str, default = 'zero', help = 'the padding type')
     parser.add_argument('--activation', type = str, default = 'lrelu', help = 'the activation type')
-    parser.add_argument('--norm', type = str, default = 'in', help = 'normalization type')
     parser.add_argument('--init_type', type = str, default = 'xavier', help = 'the initialization type')
     parser.add_argument('--init_gain', type = float, default = 0.02, help = 'the initialization gain')
     # Dataset parameters

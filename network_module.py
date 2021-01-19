@@ -9,33 +9,13 @@ import pdb
 #-----------------------------------------------
 #                Normal ConvBlock
 #-----------------------------------------------
+# xxxx5555
 class Conv2dLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, pad_type = 'zero', activation = 'elu', norm = 'none', sn = False):
+    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, activation = 'elu', sn = False):
         super(Conv2dLayer, self).__init__()
         # Initialize the padding scheme
 
-        # pad_type = opt.pad_type, activation = opt.activation, norm = opt.norm
-
-        if pad_type == 'reflect':
-            self.pad = nn.ReflectionPad2d(padding)
-        elif pad_type == 'replicate':
-            self.pad = nn.ReplicationPad2d(padding)
-        elif pad_type == 'zero':
-            self.pad = nn.ZeroPad2d(padding)
-        else:
-            assert 0, "Unsupported padding type: {}".format(pad_type)
-        
-        # Initialize the normalization type
-        if norm == 'bn':
-            self.norm = nn.BatchNorm2d(out_channels)
-        elif norm == 'in':
-            self.norm = nn.InstanceNorm2d(out_channels)
-        elif norm == 'ln':
-            self.norm = LayerNorm(out_channels)
-        elif norm == 'none':
-            self.norm = None
-        else:
-            assert 0, "Unsupported normalization: {}".format(norm)
+        self.pad = nn.ZeroPad2d(padding)
         
         # Initialize the activation funtion
         if activation == 'relu':
@@ -66,53 +46,19 @@ class Conv2dLayer(nn.Module):
     def forward(self, x):
         x = self.pad(x)
         x = self.conv2d(x)
-        if self.norm:
-            x = self.norm(x)
         if self.activation:
             x = self.activation(x)
-        return x
-
-class TransposeConv2dLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, pad_type = 'zero', activation = 'lrelu', norm = 'none', sn = False, scale_factor = 2):
-        super(TransposeConv2dLayer, self).__init__()
-        # Initialize the conv scheme
-        self.scale_factor = scale_factor
-        self.conv2d = Conv2dLayer(in_channels, out_channels, kernel_size, stride, padding, dilation, pad_type, activation, norm, sn)
-    
-        pdb.set_trace()
-
-    def forward(self, x):
-        x = F.interpolate(x, scale_factor = self.scale_factor, mode = 'nearest')
-        x = self.conv2d(x)
         return x
 
 #-----------------------------------------------
 #                Gated ConvBlock
 #-----------------------------------------------
+# xxxx5555
 class GatedConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, pad_type = 'reflect', activation = 'elu', norm = 'none', sn = False):
+    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, activation = 'elu', sn = False):
         super(GatedConv2d, self).__init__()
         # Initialize the padding scheme
-        if pad_type == 'reflect':
-            self.pad = nn.ReflectionPad2d(padding)
-        elif pad_type == 'replicate':
-            self.pad = nn.ReplicationPad2d(padding)
-        elif pad_type == 'zero':
-            self.pad = nn.ZeroPad2d(padding)
-        else:
-            assert 0, "Unsupported padding type: {}".format(pad_type)
-        
-        # Initialize the normalization type
-        if norm == 'bn':
-            self.norm = nn.BatchNorm2d(out_channels)
-        elif norm == 'in':
-            self.norm = nn.InstanceNorm2d(out_channels)
-        elif norm == 'ln':
-            self.norm = LayerNorm(out_channels)
-        elif norm == 'none':
-            self.norm = None
-        else:
-            assert 0, "Unsupported normalization: {}".format(norm)
+        self.pad = nn.ZeroPad2d(padding)
         
         # Initialize the activation funtion
         if activation == 'relu':
@@ -141,18 +87,6 @@ class GatedConv2d(nn.Module):
             self.mask_conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding = 0, dilation = dilation)
         self.sigmoid = torch.nn.Sigmoid()
 
-        # pdb.set_trace()
-        # in_channels = 4
-        # out_channels = 48
-        # kernel_size = 5
-        # stride = 1
-        # padding = 2
-        # dilation = 1
-        # pad_type = 'zero'
-        # activation = 'elu'
-        # norm = 'none'
-        # sn = False
-
     def forward(self, x):
         x = self.pad(x)
         conv = self.conv2d(x)
@@ -163,12 +97,13 @@ class GatedConv2d(nn.Module):
         x = conv * gated_mask
         return x
 
+# xxxx5555
 class TransposeGatedConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, pad_type = 'zero', activation = 'lrelu', norm = 'none', sn = True, scale_factor = 2):
+    def __init__(self, in_channels, out_channels, kernel_size, stride = 1, padding = 0, dilation = 1, activation = 'lrelu', sn = True, scale_factor = 2):
         super(TransposeGatedConv2d, self).__init__()
         # Initialize the conv scheme
         self.scale_factor = scale_factor
-        self.gated_conv2d = GatedConv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, pad_type, activation, norm, sn)
+        self.gated_conv2d = GatedConv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, activation, sn)
 
         # pdb.set_trace()
         # (Pdb) a
@@ -191,21 +126,19 @@ class TransposeGatedConv2d(nn.Module):
         # stride = 1
         # padding = 1
         # dilation = 1
-        # pad_type = 'zero'
-        # activation = 'elu'
-        # norm = 'none'
         # sn = True
         # scale_factor = 2
 
     
     def forward(self, x):
-        x = F.interpolate(x, scale_factor = self.scale_factor, mode = 'nearest')
+        x = F.interpolate(x, scale_factor = self.scale_factor)
         x = self.gated_conv2d(x)
         return x
 
 # ----------------------------------------
 #               Layer Norm
 # ----------------------------------------
+# xxxx5555
 class LayerNorm(nn.Module):
     def __init__(self, num_features, eps = 1e-8, affine = True):
         super(LayerNorm, self).__init__()
@@ -243,6 +176,7 @@ class LayerNorm(nn.Module):
 def l2normalize(v, eps = 1e-12):
     return v / (v.norm() + eps)
 
+# xxxx5555
 class SpectralNorm(nn.Module):
     def __init__(self, module, name='weight', power_iterations=1):
         super(SpectralNorm, self).__init__()
@@ -324,7 +258,7 @@ class SpectralNorm(nn.Module):
         self._update_u_v()
         return self.module.forward(*args)
 
-
+# xxxx5555
 class ContextualAttention(nn.Module):
     def __init__(self, ksize=3, stride=1, rate=1, fuse_k=3, softmax_scale=10,
                  fuse=True, use_cuda=True):
@@ -364,30 +298,26 @@ class ContextualAttention(nn.Module):
         """
         # get shapes
         raw_int_fs = list(f.size())   # b*c*h*w
-        raw_int_bs = list(b.size())   # b*c*h*w
 
         # extract patches from background with stride and rate
-        kernel = 2 * self.rate
         # raw_w is extracted for reconstruction, b -- backgroud
 
         # ksize=3, stride=1, rate=2, fuse_k=3, softmax_scale=10, fuse=True
-        raw_w_groups = extract_image_patches(b, ksizes=[2 * self.rate, 2 * self.rate],
+        raw_b_patches = extract_image_patches(b, ksizes=[2 * self.rate, 2 * self.rate],
                                       strides=[self.rate*self.stride,
                                                self.rate*self.stride],
                                       rates=[1, 1],
                                       padding='same') # [N, C*k*k, L]
-        # (Pdb) len(raw_w_groups) -- 1
-        # (Pdb) raw_w_groups[0].size()
+        raw_b_groups = torch.split(raw_b_patches, 1, dim=0)
+        # (Pdb) len(raw_b_groups) -- 1
+        # (Pdb) raw_b_groups[0].size()
         # torch.Size([1, 5440, 192, 4, 4])
-        raw_w_groups = torch.split(raw_w_groups, 1, dim=0)
-
 
         # downscaling foreground option: downscaling both foreground and
         # background for matching and use original background for reconstruction.
-        # f -- foreground
         # self.rate == 2
-        f = F.interpolate(f, scale_factor=1./self.rate, mode='nearest')
-        b = F.interpolate(b, scale_factor=1./self.rate, mode='nearest')
+        f = F.interpolate(f, scale_factor=1./self.rate)
+        b = F.interpolate(b, scale_factor=1./self.rate)
         int_fs = list(f.size())     # b*c*h*w
         int_bs = list(b.size())
         f_groups = torch.split(f, 1, dim=0)  # split tensors along the batch dimension
@@ -395,27 +325,18 @@ class ContextualAttention(nn.Module):
         # (Pdb) len(f_groups), f_groups[0].size()
         # (1, torch.Size([1, 192, 64, 85]))
 
-        # w shape: [N, C*k*k, L]
-        w_groups = extract_image_patches(b, ksizes=[self.ksize, self.ksize],
+        b_patches = extract_image_patches(b, ksizes=[self.ksize, self.ksize],
                                   strides=[self.stride, self.stride],
                                   rates=[1, 1],
                                   padding='same')
-        w_groups = torch.split(w_groups, 1, dim=0)
-
+        b_groups = torch.split(b_patches, 1, dim=0)
 
         # process mask
-        mask = F.interpolate(mask, scale_factor=1./self.rate, mode='nearest')
-        int_ms = list(mask.size())
-
-        # m shape: [N, C*k*k, L]
+        mask = F.interpolate(mask, scale_factor=1./self.rate)
         m_patches = extract_image_patches(mask, ksizes=[self.ksize, self.ksize],
                                   strides=[self.stride, self.stride],
                                   rates=[1, 1],
                                   padding='same')
-        # m shape: [B, C, k, k, L]
-        # m = m.view(int_ms[0], int_ms[1], self.ksize, self.ksize, -1)
-        # m = m.permute(0, 4, 1, 2, 3)    # m shape: [B, L, C, k, k]
-
         m = m_patches[0]    # m shape: [B, C, k, k]
 
         # mm shape: [L, 1, 1, 1]
@@ -424,27 +345,31 @@ class ContextualAttention(nn.Module):
 
         y = []
         offsets = []
-        k = self.fuse_k
         scale = self.softmax_scale    # to fit the PyTorch tensor image value range
-        fuse_weight = torch.eye(k).view(1, 1, k, k)  # 1*1*k*k
+        fuse_weight = torch.eye(self.fuse_k).view(1, 1, self.fuse_k, self.fuse_k)  # 1*1*k*k
+        escape_NaN = torch.FloatTensor([1e-4])
+
         if self.use_cuda:
             fuse_weight = fuse_weight.cuda()
+            escape_NaN = escape_NaN.cuda()
 
-        for xi, wi, raw_wi in zip(f_groups, w_groups, raw_w_groups):
+        for xi, bi, raw_bi in zip(f_groups, b_groups, raw_b_groups):
             '''
             O => output channel as a conv filter
             I => input channel as a conv filter
             xi : separated tensor along batch dimension of front; (B=1, C=128, H=32, W=32)
-            wi : separated patch tensor along batch dimension of back; (B=1, O=32*32, I=128, KH=3, KW=3)
-            raw_wi : separated tensor along batch dimension of back; (B=1, I=32*32, O=128, KH=4, KW=4)
+            bi : separated patch tensor along batch dimension of back; (B=1, O=32*32, I=128, KH=3, KW=3)
+            raw_bi : separated tensor along batch dimension of back; (B=1, I=32*32, O=128, KH=4, KW=4)
             '''
             # conv for compare
-            escape_NaN = torch.FloatTensor([1e-4])
-            if self.use_cuda:
-                escape_NaN = escape_NaN.cuda()
-            wi = wi[0]  # [L, C, k, k]
-            max_wi = torch.sqrt(reduce_sum(torch.pow(wi, 2) + escape_NaN, axis=[1, 2, 3], keepdim=True))
-            wi_normed = wi / max_wi
+
+            # xi.size(), bi.size(), raw_bi.size()
+            # (torch.Size([1, 192, 64, 85]), torch.Size([1, 5440, 192, 3, 3]), torch.Size([1, 5440, 192, 4, 4]))
+            bi = bi[0]  # [L, C, k, k]
+            max_wi = torch.sqrt(reduce_sum(torch.pow(bi, 2) + escape_NaN, axis=[1, 2, 3], keepdim=True))
+            wi_normed = bi / max_wi
+            # (Pdb) wi_normed.size()
+            # torch.Size([5440, 192, 3, 3])
             # xi shape: [1, C, H, W], yi shape: [1, L, H, W]
             xi = same_padding(xi, [self.ksize, self.ksize], [1, 1], [1, 1])  # xi: 1*c*H*W
             yi = F.conv2d(xi, wi_normed, stride=1)   # [1, L, H, W]
@@ -452,12 +377,12 @@ class ContextualAttention(nn.Module):
             if self.fuse:
                 # make all of depth to spatial resolution
                 yi = yi.view(1, 1, int_bs[2]*int_bs[3], int_fs[2]*int_fs[3])  # (B=1, I=1, H=32*32, W=32*32)
-                yi = same_padding(yi, [k, k], [1, 1], [1, 1])
+                yi = same_padding(yi, [self.fuse_k, self.fuse_k], [1, 1], [1, 1])
                 yi = F.conv2d(yi, fuse_weight, stride=1)  # (B=1, C=1, H=32*32, W=32*32)
                 yi = yi.contiguous().view(1, int_bs[2], int_bs[3], int_fs[2], int_fs[3])  # (B=1, 32, 32, 32, 32)
                 yi = yi.permute(0, 2, 1, 4, 3)
                 yi = yi.contiguous().view(1, 1, int_bs[2]*int_bs[3], int_fs[2]*int_fs[3])
-                yi = same_padding(yi, [k, k], [1, 1], [1, 1])
+                yi = same_padding(yi, [self.fuse_k, self.fuse_k], [1, 1], [1, 1])
                 yi = F.conv2d(yi, fuse_weight, stride=1)
                 yi = yi.contiguous().view(1, int_bs[3], int_bs[2], int_fs[3], int_fs[2])
                 yi = yi.permute(0, 2, 1, 4, 3).contiguous()
@@ -476,7 +401,7 @@ class ContextualAttention(nn.Module):
             offset = torch.cat([offset//int_fs[3], offset%int_fs[3]], dim=1)  # 1*2*H*W
 
             # deconv for patch pasting
-            wi_center = raw_wi[0]
+            wi_center = raw_bi[0]
             # yi = F.pad(yi, [0, 1, 0, 1])    # here may need conv_transpose same padding
             yi = F.conv_transpose2d(yi, wi_center, stride=self.rate, padding=1) / 4.  # (B=1, C=128, H=64, W=64)
             y.append(yi)

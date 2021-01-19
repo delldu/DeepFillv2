@@ -95,7 +95,7 @@ def WGAN_tester(opt):
     print('The overall number of images equals to %d' % len(trainset))
 
     # xxxx8888
-    export_onnx_model(generator)
+    # export_onnx_model(generator)
 
     # Define the dataloader
     dataloader = DataLoader(trainset, batch_size = opt.batch_size, shuffle = False, num_workers = opt.num_workers, pin_memory = True)

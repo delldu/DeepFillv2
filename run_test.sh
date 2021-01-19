@@ -5,7 +5,5 @@ python3 test.py \
 --gpu_ids '1' \
 --epoch 40 \
 --batch_size 1 \
---num_workers 8 \
 --pad_type 'zero' \
---activation 'elu' \
---norm 'none' \
+--activation 'elu'

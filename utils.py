@@ -13,7 +13,7 @@ import pdb
 # ----------------------------------------
 def create_generator(opt):
     # Initialize the networks
-    generator = network.GatedGenerator(opt)
+    generator = network.GatedGenerator()
     print('Generator is created!')
     network.weights_init(generator, init_type = opt.init_type, init_gain = opt.init_gain)
     print('Initialize generator with %s type' % opt.init_type)
@@ -21,7 +21,7 @@ def create_generator(opt):
 
 def create_discriminator(opt):
     # Initialize the networks
-    discriminator = network.PatchDiscriminator(opt)
+    discriminator = network.PatchDiscriminator()
     print('Discriminator is created!')
     network.weights_init(discriminator, init_type = opt.init_type, init_gain = opt.init_gain)
     print('Initialize discriminator with %s type' % opt.init_type)
@@ -33,29 +33,6 @@ def create_perceptualnet():
     print('Perceptual network is created!')
     return perceptualnet
     
-# ----------------------------------------
-#             PATH processing
-# ----------------------------------------
-# xxxx3333
-# def text_readlines(filename):
-#     # Try to read a txt file and return a list.Return [] if there was a mistake.
-#     try:
-#         file = open(filename, 'r')
-#     except IOError:
-#         error = []
-#         return error
-#     content = file.readlines()
-#     # This for loop deletes the EOF (like \n)
-#     for i in range(len(content)):
-#         content[i] = content[i][:len(content[i])-1]
-#     file.close()
-#     return content
-
-# xxxx3333
-# def savetxt(name, loss_log):
-#     np_loss_log = np.array(loss_log)
-#     np.savetxt(name, np_loss_log)
-
 def get_files(path):
     # read a folder, return the complete path
     ret = []
@@ -71,15 +48,6 @@ def get_names(path):
         for filespath in files:
             ret.append(filespath)
     return ret
-
-# xxxx3333
-# def text_save(content, filename, mode = 'a'):
-#     # save a list to a txt
-#     # Try to save a list variable in txt file.
-#     file = open(filename, mode)
-#     for i in range(len(content)):
-#         file.write(str(content[i]) + '\n')
-#     file.close()
 
 def check_path(path):
     if not os.path.exists(path):
@@ -109,14 +77,6 @@ def psnr(pred, target, pixel_max_cnt = 255):
     rmse_avg = (torch.mean(mse).item()) ** 0.5
     p = 20 * np.log10(pixel_max_cnt / rmse_avg)
     return p
-
-def ssim(pred, target):
-    pred = pred.clone().data.permute(0, 2, 3, 1).cpu().numpy()
-    target = target.clone().data.permute(0, 2, 3, 1).cpu().numpy()
-    target = target[0]
-    pred = pred[0]
-    ssim = skimage.measure.compare_ssim(target, pred, multichannel = True)
-    return ssim
 
 ## for contextual attention
 def extract_image_patches(images, ksizes, strides, rates, padding='same'):
@@ -150,6 +110,7 @@ def extract_image_patches(images, ksizes, strides, rates, padding='same'):
 
     return patches  # [N, C*k*k, L], L is the total number of such blocks
 
+# xxxx5555
 def same_padding(images, ksizes, strides, rates):
     assert len(images.size()) == 4
 
@@ -165,24 +126,42 @@ def same_padding(images, ksizes, strides, rates):
     padding_rows = max(0, (out_rows-1)*strides[0]+effective_k_row-rows)
     padding_cols = max(0, (out_cols-1)*strides[1]+effective_k_col-cols)
     # Pad the input
-    padding_top = int(padding_rows / 2.)
-    padding_left = int(padding_cols / 2.)
+    padding_top = padding_rows // 2
+    padding_left = padding_cols // 2
     padding_bottom = padding_rows - padding_top
     padding_right = padding_cols - padding_left
+
     paddings = (padding_left, padding_right, padding_top, padding_bottom)
     images = torch.nn.ZeroPad2d(paddings)(images)
     return images
 
-def reduce_mean(x, axis=None, keepdim=False):
+def reduce_mean(x, axis=None, keepdim=True):
+    # axis = [1, 2, 3]
+    # keepdim = True
+    # torch.Size([5440, 1, 3, 3])
     if not axis:
         axis = range(len(x.shape))
     for i in sorted(axis, reverse=True):
         x = torch.mean(x, dim=i, keepdim=keepdim)
+    # pdb.set_trace()
+    # torch.Size([5440, 1, 1, 1])
+
     return x
 
-def reduce_sum(x, axis=None, keepdim=False):
+# xxxx5555
+def reduce_sum(x, axis=None, keepdim=True):
+    # pdb.set_trace()
+    # axis = [1, 2, 3]
+    # keepdim = True
+    # (Pdb) x.size()
+    # torch.Size([5440, 192, 3, 3])
+
     if not axis:
         axis = range(len(x.shape))
     for i in sorted(axis, reverse=True):
         x = torch.sum(x, dim=i, keepdim=keepdim)
+
+    # x.size()
+    # torch.Size([5440, 1, 1, 1])
+
     return x
