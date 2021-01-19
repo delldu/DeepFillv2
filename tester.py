@@ -43,6 +43,8 @@ def export_onnx_model(model):
                       export_params=True,
                       dynamic_axes=dynamic_axes)
 
+    pdb.set_trace()
+
     # 3. Optimize model
     print('Checking model ...')
     model = onnx.load(onnx_file)
@@ -92,7 +94,8 @@ def WGAN_tester(opt):
     trainset = test_dataset.InpaintDataset(opt)
     print('The overall number of images equals to %d' % len(trainset))
 
-    # export_onnx_model(generator)
+    # xxxx8888
+    export_onnx_model(generator)
 
     # Define the dataloader
     dataloader = DataLoader(trainset, batch_size = opt.batch_size, shuffle = False, num_workers = opt.num_workers, pin_memory = True)

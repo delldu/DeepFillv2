@@ -110,15 +110,6 @@ def psnr(pred, target, pixel_max_cnt = 255):
     p = 20 * np.log10(pixel_max_cnt / rmse_avg)
     return p
 
-# xxxx3333
-# def grey_psnr(pred, target, pixel_max_cnt = 255):
-#     pred = torch.sum(pred, dim = 0)
-#     target = torch.sum(target, dim = 0)
-#     mse = torch.mul(target - pred, target - pred)
-#     rmse_avg = (torch.mean(mse).item()) ** 0.5
-#     p = 20 * np.log10(pixel_max_cnt * 3 / rmse_avg)
-#     return p
-
 def ssim(pred, target):
     pred = pred.clone().data.permute(0, 2, 3, 1).cpu().numpy()
     target = target.clone().data.permute(0, 2, 3, 1).cpu().numpy()
@@ -128,14 +119,6 @@ def ssim(pred, target):
     return ssim
 
 ## for contextual attention
-
-# def extract_image_patches(img, patch_num):
-#     b, c, h, w = img.shape
-#     img = torch.reshape(img, [b, c, patch_num, h//patch_num, patch_num, w//patch_num])
-#     img = img.permute([0, 2, 4, 3, 5, 1])
-#     # [b, patch_num, patch_num, h//patch_num, w//patch_num, c]
-#     return img
-
 def extract_image_patches(images, ksizes, strides, rates, padding='same'):
     """
     Extract patches from images and put them in the C output dimension.
@@ -148,31 +131,22 @@ def extract_image_patches(images, ksizes, strides, rates, padding='same'):
     :return: A Tensor
     """
     assert len(images.size()) == 4
-    assert padding in ['same', 'valid']
     batch_size, channel, height, width = images.size()
-
-    # pdb.set_trace()
-    # padding === 'same'
-    if padding == 'same':
-        images = same_padding(images, ksizes, strides, rates)
-    elif padding == 'valid':
-        pass
-    else:
-        raise NotImplementedError('Unsupported padding type: {}.\
-                Only "same" or "valid" are supported.'.format(padding))
-
+    images = same_padding(images, ksizes, strides, rates)
     unfold = torch.nn.Unfold(kernel_size=ksizes,
                              dilation=rates,
                              padding=0,
                              stride=strides)
     patches = unfold(images)
 
-    # pdb.set_trace()
     # (Pdb) images.size()
     # torch.Size([1, 192, 128, 170])
-    
     # (Pdb) patches.size()
     # torch.Size([1, 3072, 5440])
+
+    patches = patches.view(batch_size, channel, ksizes[0], ksizes[1], -1)
+    patches = patches.permute(0, 4, 1, 2, 3)    # raw_shape: [B, L, C, k, k]
+    # torch.Size([1, 5440, 192, 4, 4])
 
     return patches  # [N, C*k*k, L], L is the total number of such blocks
 
@@ -205,15 +179,6 @@ def reduce_mean(x, axis=None, keepdim=False):
     for i in sorted(axis, reverse=True):
         x = torch.mean(x, dim=i, keepdim=keepdim)
     return x
-
-# xxxx3333
-# def reduce_std(x, axis=None, keepdim=False):
-#     if not axis:
-#         axis = range(len(x.shape))
-#     for i in sorted(axis, reverse=True):
-#         x = torch.std(x, dim=i, keepdim=keepdim)
-#     return x
-
 
 def reduce_sum(x, axis=None, keepdim=False):
     if not axis:

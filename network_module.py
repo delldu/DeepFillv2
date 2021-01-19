@@ -153,7 +153,6 @@ class GatedConv2d(nn.Module):
         # norm = 'none'
         # sn = False
 
-    
     def forward(self, x):
         x = self.pad(x)
         conv = self.conv2d(x)
@@ -272,12 +271,18 @@ class SpectralNorm(nn.Module):
         # (Pdb) pp u.data.size(), v.data.size(), w.data.size()
         # (torch.Size([96]), torch.Size([1728]), torch.Size([96, 192, 3, 3]))
 
+        # xxxx8888
         for _ in range(self.power_iterations):
-            v.data = l2normalize(torch.mv(torch.t(w.view(height,-1).data), u.data))
-            u.data = l2normalize(torch.mv(w.view(height,-1).data, v.data))
+            # v.data = l2normalize(torch.mv(torch.t(w.view(height,-1).data), u.data))
+            # u.data = l2normalize(torch.mv(w.view(height,-1).data, v.data))
+            v.data = l2normalize(torch.mm(torch.t(w.view(height,-1).data), u.data.view(-1, 1)).squeeze(1))
+            u.data = l2normalize(torch.mm(w.view(height,-1).data, v.data.view(-1, 1)).squeeze(1))
 
+        # xxxx8888
         # sigma = torch.dot(u.data, torch.mv(w.view(height,-1).data, v.data))
-        sigma = u.dot(w.view(height, -1).mv(v))
+        sigma = u.data * (w.view(height, -1).data).mm(v.data.view(-1, 1)).squeeze(1)
+        sigma = sigma.sum()
+
         setattr(self.module, self.name, w / sigma.expand_as(w))
 
     def _made_params(self):
@@ -366,26 +371,15 @@ class ContextualAttention(nn.Module):
         # raw_w is extracted for reconstruction, b -- backgroud
 
         # ksize=3, stride=1, rate=2, fuse_k=3, softmax_scale=10, fuse=True
-        raw_w = extract_image_patches(b, ksizes=[2 * self.rate, 2 * self.rate],
+        raw_w_groups = extract_image_patches(b, ksizes=[2 * self.rate, 2 * self.rate],
                                       strides=[self.rate*self.stride,
                                                self.rate*self.stride],
                                       rates=[1, 1],
                                       padding='same') # [N, C*k*k, L]
-        # raw_shape: [N, C, k, k, L]
-        # (Pdb) p b.size()
-        # torch.Size([1, 192, 128, 170])
-        # kernel == 4, self.rate*self.stride == 2
-        # ==> 192 X 4 X 4 ==> (192*4*4)
-        # ==> raw_w.size(): torch.Size([1, 3072, 5440])
-
-        raw_w = raw_w.view(raw_int_bs[0], raw_int_bs[1], kernel, kernel, -1)
-        raw_w = raw_w.permute(0, 4, 1, 2, 3)    # raw_shape: [B, L, C, k, k]
-        raw_w_groups = torch.split(raw_w, 1, dim=0)
-
-        # (Pdb) raw_w.size() ==> torch.Size([1, 5440, 192, 4, 4])
         # (Pdb) len(raw_w_groups) -- 1
         # (Pdb) raw_w_groups[0].size()
         # torch.Size([1, 5440, 192, 4, 4])
+        raw_w_groups = torch.split(raw_w_groups, 1, dim=0)
 
 
         # downscaling foreground option: downscaling both foreground and
@@ -402,14 +396,11 @@ class ContextualAttention(nn.Module):
         # (1, torch.Size([1, 192, 64, 85]))
 
         # w shape: [N, C*k*k, L]
-        w = extract_image_patches(b, ksizes=[self.ksize, self.ksize],
+        w_groups = extract_image_patches(b, ksizes=[self.ksize, self.ksize],
                                   strides=[self.stride, self.stride],
                                   rates=[1, 1],
                                   padding='same')
-        # w shape: [N, C, k, k, L]
-        w = w.view(int_bs[0], int_bs[1], self.ksize, self.ksize, -1)
-        w = w.permute(0, 4, 1, 2, 3)    # w shape: [B, L, C, k, k]
-        w_groups = torch.split(w, 1, dim=0)
+        w_groups = torch.split(w_groups, 1, dim=0)
 
 
         # process mask
@@ -417,14 +408,15 @@ class ContextualAttention(nn.Module):
         int_ms = list(mask.size())
 
         # m shape: [N, C*k*k, L]
-        m = extract_image_patches(mask, ksizes=[self.ksize, self.ksize],
+        m_patches = extract_image_patches(mask, ksizes=[self.ksize, self.ksize],
                                   strides=[self.stride, self.stride],
                                   rates=[1, 1],
                                   padding='same')
         # m shape: [B, C, k, k, L]
-        m = m.view(int_ms[0], int_ms[1], self.ksize, self.ksize, -1)
-        m = m.permute(0, 4, 1, 2, 3)    # m shape: [B, L, C, k, k]
-        m = m[0]    # m shape: [B, C, k, k]
+        # m = m.view(int_ms[0], int_ms[1], self.ksize, self.ksize, -1)
+        # m = m.permute(0, 4, 1, 2, 3)    # m shape: [B, L, C, k, k]
+
+        m = m_patches[0]    # m shape: [B, C, k, k]
 
         # mm shape: [L, 1, 1, 1]
         mm = (reduce_mean(m, axis=[1, 2, 3], keepdim=True)==0.).to(torch.float32)
